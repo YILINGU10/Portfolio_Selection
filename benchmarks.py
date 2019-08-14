@@ -29,7 +29,6 @@ def visualize_spy(other, SPY):
 
 def get_wealth_factor(portfolio, returns):
     T, m = returns.shape
-    T += 1
     wealth_factors = np.ones(T)
     for i in range(1, T):
         wealth_factors[i] = wealth_factors[i - 1] * np.dot(
@@ -42,12 +41,20 @@ def get_wealth_factor(portfolio, returns):
 ###################################################
 
 def benchmark_portfolio(portfolio, algorithm_name, SPY_benchmark, stock_prices = None, stock_prices_norm = None, stock_returns = None):  
+    """
+    Feed portfolio in with stocks' names as columns and dates as index!
+    """
+    
     # For faster processing if norm and returns are provided already
     if stock_prices_norm is None and stock_returns is None:
         stock_prices_norm, stock_returns = process_stock_data(stock_prices)
 
+    # NaN in first row screws up cvxpy
+    if all(stock_returns.iloc[0].isna()):
+        stock_returns = stock_returns.iloc[1:]
+        
     # Solves the convex optimization problem of the Best constant rebalanced portfolio in hindsight
-    BCRP, SPY_benchmark['BCRP_reward'] = bcrp_wealth_factors(stock_returns)
+    _, SPY_benchmark['BCRP_reward'] = bcrp_wealth_factors(stock_returns)
 
     # Uniform Constant Rebalanced Portfolio
     SPY_benchmark['UCRP_reward'] = ucrp_wealth_factors(stock_returns)
@@ -60,7 +67,6 @@ def benchmark_portfolio(portfolio, algorithm_name, SPY_benchmark, stock_prices =
 
 def ucrp_wealth_factors(stock_returns):
     T, m = stock_returns.shape
-    T = T + 1
 
     #ratio for each asset
     r = 1.0/m
@@ -75,7 +81,6 @@ def ucrp_wealth_factors(stock_returns):
 def bcrp_wealth_factors(stock_returns):
     asset_returns = stock_returns.values
     T, m = asset_returns.shape
-    T = T + 1
 
     w = cvx.Variable(m)
     S = 0
@@ -85,7 +90,7 @@ def bcrp_wealth_factors(stock_returns):
     constraints = [cvx.sum(w) == 1, w >= 0]
 
     prob = cvx.Problem(objective, constraints)
-    prob.solve()  # Returns the optimal value.
+    prob.solve(solver = 'SCS')  # Returns the optimal value.
 
     # get the optimal constant weight vector
     w_nom = w.value
