@@ -40,7 +40,7 @@ def get_wealth_factor(portfolio, returns):
 # For benchmarking portfolio selection algorithms #
 ###################################################
 
-def benchmark_portfolio(portfolio, algorithm_name, SPY_benchmark, stock_prices = None, stock_prices_norm = None, stock_returns = None):  
+def benchmark_portfolio(portfolio, algorithm_name, SPY_benchmark = None, stock_prices = None, stock_prices_norm = None, stock_returns = None):  
     """
     Feed portfolio in with stocks' names as columns and dates as index!
     """
@@ -53,17 +53,22 @@ def benchmark_portfolio(portfolio, algorithm_name, SPY_benchmark, stock_prices =
     if all(stock_returns.iloc[0].isna()):
         stock_returns = stock_returns.iloc[1:]
         
+    all_cumu_wealth = pd.DataFrame(np.zeros((stock_returns.shape[0], 1)))
+    
+    if SPY_benchmark:
+        all_cumu_wealth['SPY'] = SPY_benchmark
+        
     # Solves the convex optimization problem of the Best constant rebalanced portfolio in hindsight
-    _, SPY_benchmark['BCRP_reward'] = bcrp_wealth_factors(stock_returns)
+    _, all_cumu_wealth['BCRP_reward'] = bcrp_wealth_factors(stock_returns)
 
     # Uniform Constant Rebalanced Portfolio
-    SPY_benchmark['UCRP_reward'] = ucrp_wealth_factors(stock_returns)
+    all_cumu_wealth['UCRP_reward'] = ucrp_wealth_factors(stock_returns)
     
     # User's algorithm
-    SPY_benchmark[algorithm_name] = get_wealth_factor(portfolio, stock_returns.values)
+    all_cumu_wealth[algorithm_name] = get_wealth_factor(portfolio, stock_returns.values)
 
     # plot
-    iplot(SPY_benchmark.iplot(asFigure=True, kind='scatter',xTitle='Dates',yTitle='Wealth Factor',title='Relative Wealth over time'))
+    iplot(all_cumu_wealth.iplot(asFigure=True, kind='scatter',xTitle='Dates',yTitle='Wealth Factor',title='Relative Wealth over time'))
     
 def benchmark_portfolios(portfolios, algorithm_names, SPY_benchmark, stock_prices = None, stock_prices_norm = None, stock_returns = None):  
     """
@@ -77,19 +82,21 @@ def benchmark_portfolios(portfolios, algorithm_names, SPY_benchmark, stock_price
     # NaN in first row screws up cvxpy
     if all(stock_returns.iloc[0].isna()):
         stock_returns = stock_returns.iloc[1:]
+        
+    all_cumu_wealth = pd.DataFrame(np.zeros((stock_returns.shape[0], 1)))
 
     # Solves the convex optimization problem of the Best constant rebalanced portfolio in hindsight
-    _, SPY_benchmark['BCRP_reward'] = bcrp_wealth_factors(stock_returns)
+    _, all_cumu_wealth['BCRP_reward'] = bcrp_wealth_factors(stock_returns)
 
     # Uniform Constant Rebalanced Portfolio
-    SPY_benchmark['UCRP_reward'] = ucrp_wealth_factors(stock_returns)
+    all_cumu_wealth['UCRP_reward'] = ucrp_wealth_factors(stock_returns)
 
     for portfolio, algorithm_name in zip(portfolios, algorithm_names):
         # User's algorithm
-        SPY_benchmark[algorithm_name] = get_wealth_factor(portfolio, stock_returns.values)
+        all_cumu_wealth[algorithm_name] = get_wealth_factor(portfolio, stock_returns.values)
 
     # plot
-    iplot(SPY_benchmark.iplot(asFigure=True, kind='scatter',xTitle='Dates',yTitle='Wealth Factor',title='Relative Wealth over time'))
+    iplot(all_cumu_wealth.iplot(asFigure=True, kind='scatter',xTitle='Dates',yTitle='Wealth Factor',title='Relative Wealth over time'))
 
 def ucrp_wealth_factors(stock_returns):
     T, m = stock_returns.shape

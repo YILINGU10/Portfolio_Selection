@@ -60,7 +60,7 @@ class PSenv(gym.Env):
         reward = np.dot(action.T, t_returns)
         print('action is: ' + str(action))
         print('reward is: ' + str(reward))
-        
+        print('t is: ' + str(self.t))
         done = self.t >= len(self.t_prices)
 
         return np.array(self.state), reward, done, {}
